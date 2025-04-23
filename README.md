@@ -1,90 +1,91 @@
-[![Build Stable](https://github.com/frappe/frappe_docker/actions/workflows/build_stable.yml/badge.svg)](https://github.com/frappe/frappe_docker/actions/workflows/build_stable.yml)
-[![Build Develop](https://github.com/frappe/frappe_docker/actions/workflows/build_develop.yml/badge.svg)](https://github.com/frappe/frappe_docker/actions/workflows/build_develop.yml)
+# press terraformed (WORK IN PROGRESS)
 
-Everything about [Frappe](https://github.com/frappe/frappe) and [ERPNext](https://github.com/frappe/erpnext) in containers.
+Custom Docker image for Frappe with the `press` app pre-installed.  
+This image is designed for use in containerized deployments, CI/CD pipelines, and reproducible environments.
 
-# Getting Started
+![Docker Build](https://img.shields.io/github/actions/workflow/status/digikwal/press/docker-build.yml?label=build&style=flat-square)
+![Docker Image Size](https://img.shields.io/docker/image-size/digikwal/press/latest?style=flat-square)
+![Docker Pulls](https://img.shields.io/docker/pulls/digikwal/press?style=flat-square)
 
-To get started you need [Docker](https://docs.docker.com/get-docker/), [docker-compose](https://docs.docker.com/compose/), and [git](https://docs.github.com/en/get-started/getting-started-with-git/set-up-git) setup on your machine. For Docker basics and best practices refer to Docker's [documentation](http://docs.docker.com).
+---
 
-Once completed, chose one of the following two sections for next steps.
+## 🚀 Features
 
-### Try in Play With Docker
+- Based on `frappe:v15.66.1`
+- Automatically installs the [`press`](https://github.com/frappe/press) app using `bench get-app`
+- Includes required directories for Certbot integration and custom build workflows:
+  - `/home/frappe/frappe-bench/press/.certbot/webroot`
+  - `/home/frappe/frappe-bench/press/.clones`
+  - `/home/frappe/frappe-bench/press/.docker-builds`
+- Pre-installs `certbot-dns-route53` (required for frappe press)
+- First time setup script for site creation and press installation
+  - ['Documentation'](https://frappecloud.com/docs/local-fc-setup)
 
-To play in an already set up sandbox, in your browser, click the button below:
+---
 
-<a href="https://labs.play-with-docker.com/?stack=https://raw.githubusercontent.com/frappe/frappe_docker/main/pwd.yml">
-  <img src="https://raw.githubusercontent.com/play-with-docker/stacks/master/assets/images/button.png" alt="Try in PWD"/>
-</a>
+## 🐳 Usage
 
-### Try on your Dev environment
-
-First clone the repo:
-
-```sh
-git clone https://github.com/frappe/frappe_docker
-cd frappe_docker
+1. Clone this repo to your frappe home directory
+```bash
+git clone https://github.com/digikwal/press /home/frappe
+```
+2. Create a `.env` file (see `.env.example`)
+```bash
+cp example.env .env
+```
+3. Setup your '.env' by customizing the placeholders
+   - DO NOT change $AWS_REGION
+   - DO NOT use naked domain for $FRAPPE_PRESS_DOMAIN
+4. Run first time setup script
+```bash
+bash /home/frappe/first_time_setup.sh
+```
+5. Follow instructions and have patience
+6. To see passwords check your environment file
+```bash
+cat ~/.env
 ```
 
-Then run: `docker compose -f pwd.yml up -d`
+Here are some basic Docker commands to check container health and status:
 
-### To run on ARM64 architecture follow this instructions
+### 1. **List All Containers**
+   ```bash
+   docker ps -a
+   ```
+   - Shows all running and stopped containers, along with their status.
 
-After cloning the repo run this command to build multi-architecture images specifically for ARM64.
+### 2. **Check Logs of a Container**
+   ```bash
+   docker logs <container_name_or_id>
+   ```
+   - Displays the logs of a specific container. Use `-f` to follow logs in real-time.
 
-`docker buildx bake --no-cache --set "*.platform=linux/arm64"`
+### 3. **Inspect Container Health**
+   ```bash
+   docker inspect <container_name_or_id>
+   ```
+   - Provides detailed information about the container, including health status if a health check is defined.
 
-and then
+### 4. **Check Health Status**
+   ```bash
+   docker ps --filter "name=<container_name>" --format "{{.Names}}: {{.Status}}"
+   ```
+   - Filters the output to show the health status of a specific container.
 
-- add `platform: linux/arm64` to all services in the `pwd.yml`
-- replace the current specified versions of erpnext image on `pwd.yml` with `:latest`
+### 5. **Execute a Command Inside a Running Container**
+   ```bash
+   docker exec -it <container_name_or_id> bash
+   ```
+   - Opens an interactive shell inside the container for debugging.
 
-Then run: `docker compose -f pwd.yml up -d`
+### 6. **Restart a Container**
+   ```bash
+   docker restart <container_name_or_id>
+   ```
+   - Restarts a container if it's not functioning properly.
 
-## Final steps
-
-Wait for 5 minutes for ERPNext site to be created or check `create-site` container logs before opening browser on port 8080. (username: `Administrator`, password: `admin`)
-
-If you ran in a Dev Docker environment, to view container logs: `docker compose -f pwd.yml logs -f create-site`. Don't worry about some of the initial error messages, some services take a while to become ready, and then they go away.
-
-# Documentation
-
-### [Frequently Asked Questions](https://github.com/frappe/frappe_docker/wiki/Frequently-Asked-Questions)
-
-### [Production](#production)
-
-- [List of containers](docs/list-of-containers.md)
-- [Single Compose Setup](docs/single-compose-setup.md)
-- [Environment Variables](docs/environment-variables.md)
-- [Single Server Example](docs/single-server-example.md)
-- [Setup Options](docs/setup-options.md)
-- [Site Operations](docs/site-operations.md)
-- [Backup and Push Cron Job](docs/backup-and-push-cronjob.md)
-- [Port Based Multi Tenancy](docs/port-based-multi-tenancy.md)
-- [Migrate from multi-image setup](docs/migrate-from-multi-image-setup.md)
-- [running on linux/mac](docs/setup_for_linux_mac.md)
-- [TLS for local deployment](docs/tls-for-local-deployment.md)
-
-### [Custom Images](#custom-images)
-
-- [Custom Apps](docs/custom-apps.md)
-- [Custom Apps with podman](docs/custom-apps-podman.md)
-- [Build Version 10 Images](docs/build-version-10-images.md)
-
-### [Development](#development)
-
-- [Development using containers](docs/development.md)
-- [Bench Console and VSCode Debugger](docs/bench-console-and-vscode-debugger.md)
-- [Connect to localhost services](docs/connect-to-localhost-services-from-containers-for-local-app-development.md)
-
-### [Troubleshoot](docs/troubleshoot.md)
-
-# Contributing
-
-If you want to contribute to this repo refer to [CONTRIBUTING.md](CONTRIBUTING.md)
-
-This repository is only for container related stuff. You also might want to contribute to:
-
-- [Frappe framework](https://github.com/frappe/frappe#contributing),
-- [ERPNext](https://github.com/frappe/erpnext#contributing),
-- [Frappe Bench](https://github.com/frappe/bench).
+### 7. **Check Resource Usage**
+   ```bash
+   docker stats
+   ```
+   - Displays real-time resource usage (CPU, memory, etc.) of all running containers.
