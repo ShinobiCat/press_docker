@@ -28,11 +28,11 @@ jobs:
 
       - name: Install dependencies
         run: npm install
-        working-directory: ./.github/build
+        working-directory: ./
 
       - name: Run tests
         run: npm test
-        working-directory: ./.github/build
+        working-directory: ./
 
       - name: Generate release notes and version
         id: semantic_release
