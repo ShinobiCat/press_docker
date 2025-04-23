@@ -3,7 +3,7 @@
 # Countdown function
 countdown() {
   local seconds=$1
-  while [ "$seconds" -gt 0 ]; do  # SC2086: Quote variables
+  while [ "$seconds" -gt 0 ]; do # SC2086: Quote variables
     echo -ne "Waiting for $seconds seconds...\r"
     sleep 1
     ((seconds--))
@@ -39,7 +39,7 @@ else
   echo "MYSQL_ROOT_PASSWORD not set in .env"
   echo "Generating password for MariaDB"
   MYSQL_ROOT_PASSWORD=$(openssl rand -base64 128 | tr -d '=+/[:space:]' | head -c 55)
-  echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" >> /home/frappe/press/.env
+  echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" >>/home/frappe/press/.env
 fi
 
 # Generate or confirm Frappe admin password
@@ -51,14 +51,14 @@ else
   echo "FRAPPE_ADMIN_PASSWORD not set in .env"
   echo "Generating password for Frappe admin"
   FRAPPE_ADMIN_PASSWORD=$(openssl rand -base64 128 | tr -d '=+/[:space:]' | head -c 55)
-  echo "FRAPPE_ADMIN_PASSWORD=$FRAPPE_ADMIN_PASSWORD" >> /home/frappe/press/.env
+  echo "FRAPPE_ADMIN_PASSWORD=$FRAPPE_ADMIN_PASSWORD" >>/home/frappe/press/.env
 fi
 
 # Start Docker Compose
 echo "Starting Docker Compose"
 countdown 3
 cd /home/frappe/press && docker compose up -d
-if ! docker compose up -d; then  # SC2181: Use direct exit code check
+if ! docker compose up -d; then # SC2181: Use direct exit code check
   echo "Docker Compose failed to start"
   exit 1
 fi
@@ -66,7 +66,7 @@ fi
 # Wait for services to initialize
 echo "Waiting for services to initialize"
 countdown 10
-export "$(grep -v "^#" /home/frappe/press/.env | xargs)"  # SC2046: Quote command substitution
+export "$(grep -v "^#" /home/frappe/press/.env | xargs)" # SC2046: Quote command substitution
 
 # Create new Frappe site
 echo "Creating Frappe site"

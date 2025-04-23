@@ -33,7 +33,7 @@ runcmd:
   - sed -i -e '/^\(#\|\)AllowAgentForwarding/s/^.*$/AllowAgentForwarding no/' /etc/ssh/sshd_config
   - sed -i -e '/^\(#\|\)AuthorizedKeysFile/s/^.*$/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
   - sed -i '$a AllowUsers frappe' /etc/ssh/sshd_config
-  
+
   # clone press then reboot
   - git clone https://github.com/digikwal/press /home/frappe/press
   - chown -R frappe:frappe /home/frappe/press

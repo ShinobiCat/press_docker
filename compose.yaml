@@ -252,7 +252,7 @@ services:
     labels:
       ofelia.enabled: "true"
       ofelia.job-exec.datecron.command: bench --site all backup
-      ofelia.job-exec.datecron.schedule: '@every 6h'
+      ofelia.job-exec.datecron.schedule: "@every 6h"
       ofelia.job-exec.datecron.user: frappe
     networks:
       default: null
