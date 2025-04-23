@@ -32,9 +32,16 @@ RUN export APP_INSTALL_ARGS="" && \
 
 FROM frappe/base:${FRAPPE_BRANCH} AS backend
 
-USER frappe
+USER root
 
 COPY --from=builder --chown=frappe:frappe /home/frappe/frappe-bench /home/frappe/frappe-bench
+
+RUN mkdir -p /home/frappe/.certbot/webroot \
+    /home/frappe/frappe-bench/.clones \
+    /home/frappe/frappe-bench/.docker-builds && \
+    chown -R frappe:frappe  /home/frappe/.certbot /home/frappe/frappe-bench/.clones /home/frappe/frappe-bench/.docker-builds
+
+USER frappe
 
 WORKDIR /home/frappe/frappe-bench
 
