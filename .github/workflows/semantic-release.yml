@@ -1,0 +1,64 @@
+name: Semantic Release
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+  issues: write
+  pull-requests: write
+  #packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install
+        working-directory: ./.github/build
+
+      - name: Run tests
+        run: npm test
+        working-directory: ./.github/build
+
+      - name: Generate release notes and version
+        id: semantic_release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          RELEASE_TAG=$(npx semantic-release --dry-run | grep -oP '(?<=next release version is )[^ ]+')
+          echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
+        working-directory: ./.github/build
+
+      - name: Trigger Docker Build Workflow
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const releaseTag = process.env.RELEASE_TAG || 'latest';
+            const frappeBranch = process.env.FRAPPE_BRANCH || 'v15.63.0';
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: "docker-build.yml",
+              ref: context.ref,
+              inputs: {
+                release_tag: releaseTag,
+                frappe_branch: frappeBranch
+              }
+            });
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FRAPPE_BRANCH: ${{ github.event.inputs.frappe_branch || '' }}
