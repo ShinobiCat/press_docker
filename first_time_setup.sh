@@ -1,14 +1,15 @@
+#!/bin/bash
+
 # Countdown function
 countdown() {
   local seconds=$1
-  while [ $seconds -gt 0 ]; do
+  while [ "$seconds" -gt 0 ]; do  # SC2086: Quote variables
     echo -ne "Waiting for $seconds seconds...\r"
     sleep 1
     ((seconds--))
   done
   echo ""
 }
-
 
 echo "Starting Frappe first-time setup"
 countdown 3
@@ -57,7 +58,7 @@ fi
 echo "Starting Docker Compose"
 countdown 3
 cd /home/frappe/press && docker compose up -d
-if [ $? -ne 0 ]; then
+if ! docker compose up -d; then  # SC2181: Use direct exit code check
   echo "Docker Compose failed to start"
   exit 1
 fi
@@ -65,7 +66,7 @@ fi
 # Wait for services to initialize
 echo "Waiting for services to initialize"
 countdown 10
-export $(grep -v "^#" /home/frappe/press/.env | xargs)
+export "$(grep -v "^#" /home/frappe/press/.env | xargs)"  # SC2046: Quote command substitution
 
 # Create new Frappe site
 echo "Creating Frappe site"
@@ -75,7 +76,11 @@ cd /home/frappe/press && docker compose exec backend bench new-site "$FRAPPE_PRE
   --db-root-username="root" \
   --admin-password="$FRAPPE_ADMIN_PASSWORD" \
   --db-root-password="$MYSQL_ROOT_PASSWORD"
-if [ $? -ne 0 ]; then
+if ! docker compose exec backend bench new-site "$FRAPPE_PRESS_DOMAIN" \
+  --mariadb-user-host-login-scope=% \
+  --db-root-username="root" \
+  --admin-password="$FRAPPE_ADMIN_PASSWORD" \
+  --db-root-password="$MYSQL_ROOT_PASSWORD"; then
   echo "Failed to create new Frappe site"
   exit 1
 fi
@@ -84,7 +89,7 @@ fi
 echo "Installing Press app"
 countdown 3
 cd /home/frappe/press && docker compose exec backend bench --site "$FRAPPE_PRESS_DOMAIN" install-app press
-if [ $? -ne 0 ]; then
+if ! docker compose exec backend bench --site "$FRAPPE_PRESS_DOMAIN" install-app press; then
   echo "Failed to install Press app"
   exit 1
 fi
