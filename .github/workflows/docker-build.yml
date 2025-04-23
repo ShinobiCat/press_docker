@@ -36,7 +36,7 @@ jobs:
 
       - name: Encode apps.json
         run: |
-          export APPS_JSON_BASE64=$(base64 -w 0 ./.github/build/apps.json)
+          export APPS_JSON_BASE64=$(base64 -w 0 ./apps.json)
           echo "APPS_JSON_BASE64=$APPS_JSON_BASE64" >> $GITHUB_ENV
 
       - name: Build Docker image
