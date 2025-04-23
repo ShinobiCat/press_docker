@@ -39,7 +39,8 @@ COPY --from=builder --chown=frappe:frappe /home/frappe/frappe-bench /home/frappe
 RUN mkdir -p /home/frappe/.certbot/webroot \
     /home/frappe/frappe-bench/.clones \
     /home/frappe/frappe-bench/.docker-builds && \
-    chown -R frappe:frappe  /home/frappe/.certbot /home/frappe/frappe-bench/.clones /home/frappe/frappe-bench/.docker-builds
+    chown -R frappe:frappe  /home/frappe/.certbot /home/frappe/frappe-bench/.clones /home/frappe/frappe-bench/.docker-builds && \
+    pip3 install certbot-dns-route53
 
 USER frappe
 
