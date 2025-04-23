@@ -1,0 +1,125 @@
+#cloud-config
+users:
+  - name: frappe
+    groups: admin, users
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+    - $PUB_SSH_KEY
+
+packages:
+  - curl
+  - git
+  - jq
+  - software-properties-common
+package_update: true
+package_upgrade: true
+
+write_files:
+  path: /root/first_time_setup.sh
+  content: |
+    echo "Starting frappe first time setup"
+
+    # Check if .env file exists
+    if [ -f ~/.env ]; then
+      echo ".env file found"
+    else
+      echo ".env file not found. Creating it from example.env."
+      cp /home/frappe/example.env /home/frappe/.env
+      chown frappe:frappe /home/frappe/.env
+      echo "Please edit the .env file to configure it correctly."
+      echo ""
+      sleep 3
+      echo "Starting nano to edit .env file. Please SAVE and EXIT when finished."
+      sleep 5
+      nano /home/frappe/.env
+      echo "Continuing setup after .env file is saved."
+    fi
+
+    # Generate or confirm MySQL password
+    echo "Checking if MySQL password is set in .env"
+    if grep -q "MYSQL_ROOT_PASSWORD" /home/frappe/.env; then
+      echo "MYSQL_ROOT_PASSWORD already set in .env"
+    else
+      echo "MYSQL_ROOT_PASSWORD not set in .env"
+      echo "Generating password for MariaDB"
+      MYSQL_ROOT_PASSWORD=$(openssl rand -base64 128 | tr -d '=+/[:space:]' | head -c 55)
+      echo "MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD" >> /home/frappe/.env
+    fi
+
+    # Generate or confirm Frappe admin password
+    echo "Checking if Frappe admin password is set in .env"
+    if grep -q "FRAPPE_ADMIN_PASSWORD" /home/frappe/.env; then
+      echo "FRAPPE_ADMIN_PASSWORD already set in .env"
+    else
+      echo "FRAPPE_ADMIN_PASSWORD not set in .env"
+      echo "Generating password for Frappe admin"
+      FRAPPE_ADMIN_PASSWORD=$(openssl rand -base64 128 | tr -d '=+/[:space:]' | head -c 55)
+      echo "FRAPPE_ADMIN_PASSWORD=$FRAPPE_ADMIN_PASSWORD" >> /home/frappe/.env
+    fi
+
+    # Start Docker Compose
+    echo "Starting Docker Compose"
+    cd /home/frappe && docker compose up -d
+    if [ $? -ne 0 ]; then
+      echo "Docker Compose failed to start"
+      exit 1
+    fi
+
+    sleep 30
+    export $(grep -v "^#" /home/frappe/.env | xargs)
+
+    # Create new Frappe site
+    docker compose exec backend bench new-site "$FRAPPE_PRESS_DOMAIN" \
+      --mariadb-user-host-login-scope=% \
+      --db-root-username="root" \
+      --admin-password="$FRAPPE_ADMIN_PASSWORD" \
+      --db-root-password="$MYSQL_ROOT_PASSWORD"
+    if [ $? -ne 0 ]; then
+      echo "Failed to create new Frappe site"
+      exit 1
+    fi
+
+    # Install Press app
+    docker compose exec backend bench --site "$FRAPPE_PRESS_DOMAIN" install-app press
+    if [ $? -ne 0 ]; then
+      echo "Failed to install Press app"
+      exit 1
+    fi
+
+    docker compose restart
+    echo "Press installed successfully"
+    echo ""
+    sed -i '/first_time_setup.sh/d' ~/.bashrc
+    cat /home/frappe/.env
+  permissions: 0600
+  owner: root:root
+
+runcmd:
+  # first_time_setup.sh
+  - mv /root/first_time_setup.sh /home/frappe/first_time_setup.sh
+  - chown frappe:frappe /home/frappe/first_time_setup.sh
+
+  # setup docker
+  - curl -fsSL https://get.docker.com | bash
+  - systemctl enable docker.service
+  - systemctl restart docker.service
+  - usermod -aG docker frappe
+
+  # setup ssh security
+  - sed -i -e '/^\(#\|\)PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)PasswordAuthentication/s/^.*$/PasswordAuthentication no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)KbdInteractiveAuthentication/s/^.*$/KbdInteractiveAuthentication no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)ChallengeResponseAuthentication/s/^.*$/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)MaxAuthTries/s/^.*$/MaxAuthTries 2/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)AllowTcpForwarding/s/^.*$/AllowTcpForwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)X11Forwarding/s/^.*$/X11Forwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)AllowAgentForwarding/s/^.*$/AllowAgentForwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)AuthorizedKeysFile/s/^.*$/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
+  - sed -i '$a AllowUsers frappe' /etc/ssh/sshd_config
+  
+  # clone press then reboot
+  - git clone https://github.com/digikwal/press /home/frappe
+  - echo "/home/frappe/first_time_setup.sh" >> /home/frappe/.bashrc
+  - sleep 15
+  - reboot
