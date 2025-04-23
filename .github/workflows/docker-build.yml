@@ -1,14 +1,11 @@
 name: Build and Push Press Docker Image
 
 on:
-  workflow_dispatch:
-    inputs:
-      release_tag:
-        description: 'The release tag for the Docker image (managed by semantic-release)'
-        required: true
-      frappe_branch:
-        description: 'The branch of Frappe to use for building the image'
-        required: true
+  workflow_run:
+    workflows:
+      - Semantic Release
+    types:
+      - completed
 
 jobs:
   build-and-push:
@@ -17,6 +14,18 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+
+      - name: Download release metadata
+        uses: actions/download-artifact@v3
+        with:
+          name: release-metadata
+
+      - name: Load release metadata
+        run: |
+          export RELEASE_TAG=$(cat release_tag.txt)
+          export FRAPPE_BRANCH=$(cat frappe_branch.txt)
+          echo "RELEASE_TAG=$RELEASE_TAG"
+          echo "FRAPPE_BRANCH=$FRAPPE_BRANCH" >> $GITHUB_ENV
 
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
@@ -33,18 +42,18 @@ jobs:
         run: |
           docker build \
             --build-arg FRAPPE_PATH=https://github.com/frappe/frappe \
-            --build-arg FRAPPE_BRANCH=${{ github.event.inputs.frappe_branch }} \
+            --build-arg FRAPPE_BRANCH=${{ env.FRAPPE_BRANCH }} \
             --build-arg APPS_JSON_BASE64=${{ env.APPS_JSON_BASE64 }} \
-            --tag digikwal/press:${{ github.event.inputs.release_tag }} \
+            --tag digikwal/press:${{ env.RELEASE_TAG }} \
             --file images/layered/Containerfile .
 
       - name: Push Docker image and tags
         run: |
-          docker push digikwal/press:${{ github.event.inputs.release_tag }}
-          if [[ "${{ github.event.inputs.release_tag }}" != *"-"* ]]; then
-            docker tag digikwal/press:${{ github.event.inputs.release_tag }} digikwal/press:latest
+          docker push digikwal/press:${{ env.RELEASE_TAG }}
+          if [[ "${{ env.RELEASE_TAG }}" != *"-"* ]]; then
+            docker tag digikwal/press:${{ env.RELEASE_TAG }} digikwal/press:latest
             docker push digikwal/press:latest
           else
-            docker tag digikwal/press:${{ github.event.inputs.release_tag }} digikwal/press:dev
+            docker tag digikwal/press:${{ env.RELEASE_TAG }} digikwal/press:dev
             docker push digikwal/press:dev
           fi
