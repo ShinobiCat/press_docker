@@ -48,7 +48,7 @@ jobs:
         with:
           script: |
             const releaseTag = process.env.RELEASE_TAG || 'latest';
-            const frappeBranch = process.env.FRAPPE_BRANCH || 'v15.63.0';
+            const frappeBranch = process.env.FRAPPE_BRANCH || 'version-14';
             await github.rest.actions.createWorkflowDispatch({
               owner: context.repo.owner,
               repo: context.repo.repo,
@@ -61,4 +61,4 @@ jobs:
             });
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FRAPPE_BRANCH: ${{ github.event.inputs.frappe_branch || '' }}
+          FRAPPE_BRANCH: ${{ vars.FRAPPE_BRANCH || 'version-14' }}
