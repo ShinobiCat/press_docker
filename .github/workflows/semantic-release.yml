@@ -1,11 +1,11 @@
 name: Semantic Release
 
 on:
-  push:
-    branches:
-      - dev
-      - main
-  workflow_dispatch:
+  workflow_run:
+    workflows:
+      - Lint
+    types:
+      - completed
 
 permissions:
   actions: write
@@ -42,6 +42,19 @@ jobs:
           RELEASE_TAG=$(npx semantic-release --dry-run | grep -oP '(?<=next release version is )[^ ]+')
           echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
         working-directory: ./.github/build
+
+      - name: Create release metadata files
+        run: |
+          echo "${RELEASE_TAG}" > release_tag.txt
+          echo "${FRAPPE_BRANCH}" > frappe_branch.txt
+
+      - name: Upload release metadata
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-metadata
+          path: |
+            release_tag.txt
+            frappe_branch.txt
 
       - name: Trigger Docker Build Workflow
         uses: actions/github-script@v6
