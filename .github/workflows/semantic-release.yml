@@ -12,7 +12,6 @@ permissions:
   contents: write
   issues: write
   pull-requests: write
-  #packages: write
 
 jobs:
   release:
@@ -42,10 +41,14 @@ jobs:
         run: |
           RELEASE_TAG=$(npx semantic-release --dry-run | grep -oP '(?<=next release version is )[^ ]+')
           echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
-        working-directory: ./.github/build
 
       - name: Create release metadata files
         run: |
+          # Determine FRAPPE_BRANCH if not already set
+          FRAPPE_BRANCH=${{ vars.FRAPPE_BRANCH || 'version-14' }}
+          echo "FRAPPE_BRANCH=$FRAPPE_BRANCH" >> $GITHUB_ENV
+
+          # Save metadata to files
           echo "${RELEASE_TAG}" > release_tag.txt
           echo "${FRAPPE_BRANCH}" > frappe_branch.txt
 
@@ -56,23 +59,3 @@ jobs:
           path: |
             release_tag.txt
             frappe_branch.txt
-
-      - name: Trigger Docker Build Workflow
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const releaseTag = process.env.RELEASE_TAG || 'latest';
-            const frappeBranch = process.env.FRAPPE_BRANCH || 'version-14';
-            await github.rest.actions.createWorkflowDispatch({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              workflow_id: "docker-build.yml",
-              ref: context.ref,
-              inputs: {
-                release_tag: releaseTag,
-                frappe_branch: frappeBranch
-              }
-            });
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          FRAPPE_BRANCH: ${{ vars.FRAPPE_BRANCH || 'version-14' }}
