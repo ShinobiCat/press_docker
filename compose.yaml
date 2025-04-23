@@ -1,31 +1,25 @@
-x-customizable-image: &customizable_image
-  # By default the image used only contains the `frappe` and `erpnext` apps.
-  # See https://github.com/frappe/frappe_docker/blob/main/docs/custom-apps.md
-  # about using custom images.
-  image: ${CUSTOM_IMAGE:-frappe/erpnext}:${CUSTOM_TAG:-$ERPNEXT_VERSION}
-  pull_policy: ${PULL_POLICY:-always}
-  restart: ${RESTART_POLICY:-unless-stopped}
-
-x-depends-on-configurator: &depends_on_configurator
-  depends_on:
-    configurator:
-      condition: service_completed_successfully
-
-x-backend-defaults: &backend_defaults
-  <<: [*depends_on_configurator, *customizable_image]
-  volumes:
-    - sites:/home/frappe/frappe-bench/sites
-
+name: press
 services:
-  configurator:
-    <<: *backend_defaults
+  backend:
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+        required: true
+    image: digikwal/press:latest
+    networks:
+      default: null
     platform: linux/amd64
-    entrypoint:
-      - bash
-      - -c
-    # add redis_socketio for backward compatibility
+    pull_policy: missing
+    restart: unless-stopped
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - certbot-press:/home/frappe/.certbot
+      - clones-press:/home/frappe/frappe-bench/.clones
+      - builds-press:/home/frappe/frappe-bench/.docker-builds
+  configurator:
     command:
-      - >
+      - |
         ls -1 apps > sites/apps.txt;
         bench set-config -g db_host $$DB_HOST;
         bench set-config -gp db_port $$DB_PORT;
@@ -33,63 +27,289 @@ services:
         bench set-config -g redis_queue "redis://$$REDIS_QUEUE";
         bench set-config -g redis_socketio "redis://$$REDIS_QUEUE";
         bench set-config -gp socketio_port $$SOCKETIO_PORT;
+        bench set-config -g developer_mode 1;
+    depends_on:
+      db:
+        condition: service_healthy
+        required: true
+      redis-cache:
+        condition: service_started
+        required: true
+      redis-queue:
+        condition: service_started
+        required: true
+    entrypoint:
+      - bash
+      - -c
     environment:
-      DB_HOST: ${DB_HOST:-}
-      DB_PORT: ${DB_PORT:-}
-      REDIS_CACHE: ${REDIS_CACHE:-}
-      REDIS_QUEUE: ${REDIS_QUEUE:-}
-      SOCKETIO_PORT: 9000
-    depends_on: {}
+      DB_HOST: db
+      DB_PORT: "3306"
+      REDIS_CACHE: redis-cache:6379
+      REDIS_QUEUE: redis-queue:6379
+      SOCKETIO_PORT: "9000"
+    image: digikwal/press:latest
+    networks:
+      default: null
+    platform: linux/amd64
+    pull_policy: missing
     restart: on-failure
-
-  backend:
-    <<: *backend_defaults
-    platform: linux/amd64
-
-  frontend:
-    <<: *customizable_image
-    platform: linux/amd64
-    command:
-      - nginx-entrypoint.sh
-    environment:
-      BACKEND: backend:8000
-      SOCKETIO: websocket:9000
-      FRAPPE_SITE_NAME_HEADER: ${FRAPPE_SITE_NAME_HEADER:-$$host}
-      UPSTREAM_REAL_IP_ADDRESS: ${UPSTREAM_REAL_IP_ADDRESS:-127.0.0.1}
-      UPSTREAM_REAL_IP_HEADER: ${UPSTREAM_REAL_IP_HEADER:-X-Forwarded-For}
-      UPSTREAM_REAL_IP_RECURSIVE: ${UPSTREAM_REAL_IP_RECURSIVE:-off}
-      PROXY_READ_TIMEOUT: ${PROXY_READ_TIMEOUT:-120}
-      CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-50m}
     volumes:
       - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - certbot-press:/home/frappe/.certbot
+      - clones-press:/home/frappe/frappe-bench/.clones
+      - builds-press:/home/frappe/frappe-bench/.docker-builds
+  cron:
+    command:
+      - daemon
+      - --docker
     depends_on:
-      - backend
-      - websocket
-
-  websocket:
-    <<: [*depends_on_configurator, *customizable_image]
+      scheduler:
+        condition: service_started
+        required: true
+    image: mcuadros/ofelia:latest
+    networks:
+      default: null
+    volumes:
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: true
+  db:
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --skip-character-set-client-handshake
+      - --skip-innodb-read-only-compressed
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h localhost --password=${MYSQL_ROOT_PASSWORD}
+      interval: 1s
+      retries: 20
+    image: mariadb:10.6
+    networks:
+      default: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: db-data
+        target: /var/lib/mysql
+        volume: {}
+  frontend:
+    command:
+      - nginx-entrypoint.sh
+    depends_on:
+      backend:
+        condition: service_started
+        required: true
+      websocket:
+        condition: service_started
+        required: true
+    environment:
+      BACKEND: backend:8000
+      CLIENT_MAX_BODY_SIZE: 50m
+      FRAPPE_SITE_NAME_HEADER: $$host
+      PROXY_READ_TIMEOUT: "120"
+      SOCKETIO: websocket:9000
+      UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
+      UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
+      UPSTREAM_REAL_IP_RECURSIVE: "off"
+    image: digikwal/press:latest
+    labels:
+      traefik.enable: "true"
+      traefik.http.routers.frontend-http.entrypoints: websecure
+      traefik.http.routers.frontend-http.rule: Host(`${FRAPPE_PRESS_DOMAIN}`)
+      traefik.http.routers.frontend-http.tls.certresolver: main-resolver
+      traefik.http.services.frontend.loadbalancer.server.port: "8080"
+    networks:
+      default: null
     platform: linux/amd64
+    pull_policy: missing
+    restart: unless-stopped
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - certbot-press:/home/frappe/.certbot
+      - clones-press:/home/frappe/frappe-bench/.clones
+      - builds-press:/home/frappe/frappe-bench/.docker-builds
+  proxy:
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+
+      - --entrypoints.web.address=:80
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+
+      - --entrypoints.websecure.address=:443
+
+      - --certificatesResolvers.main-resolver.acme.dnsChallenge.provider=route53
+      - --certificatesResolvers.main-resolver.acme.dnsChallenge.delayBeforeCheck=0
+      - --certificatesResolvers.main-resolver.acme.dnsChallenge.resolvers=1.1.1.1:53,9.9.9.9:53
+      - --certificatesResolvers.main-resolver.acme.email=${FRAPPE_ADMIN_EMAIL}
+      - --certificatesResolvers.main-resolver.acme.storage=/letsencrypt/acme.json
+    image: traefik:v2.11
+    environment:
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_REGION: ${AWS_REGION}
+    networks:
+      default: null
+    ports:
+      - mode: ingress
+        target: 80
+        published: "80"
+        protocol: tcp
+      - mode: ingress
+        target: 443
+        published: "443"
+        protocol: tcp
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: traefik-data
+        target: /letsencrypt
+        volume: {}
+      - type: bind
+        source: /var/run/docker.sock
+        target: /var/run/docker.sock
+        read_only: true
+        bind:
+          create_host_path: true
+  queue-long:
+    command:
+      - bench
+      - worker
+      - --queue
+      - long,default,short
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+        required: true
+    image: digikwal/press:latest
+    networks:
+      default: null
+    platform: linux/amd64
+    pull_policy: missing
+    restart: unless-stopped
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - certbot-press:/home/frappe/.certbot
+      - clones-press:/home/frappe/frappe-bench/.clones
+      - builds-press:/home/frappe/frappe-bench/.docker-builds
+  queue-short:
+    command:
+      - bench
+      - worker
+      - --queue
+      - short,default
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+        required: true
+    image: digikwal/press:latest
+    networks:
+      default: null
+    platform: linux/amd64
+    pull_policy: missing
+    restart: unless-stopped
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - certbot-press:/home/frappe/.certbot
+      - clones-press:/home/frappe/frappe-bench/.clones
+      - builds-press:/home/frappe/frappe-bench/.docker-builds
+  redis-cache:
+    image: redis:6.2-alpine
+    networks:
+      default: null
+    restart: unless-stopped
+  redis-queue:
+    image: redis:6.2-alpine
+    networks:
+      default: null
+    restart: unless-stopped
+    volumes:
+      - type: volume
+        source: redis-queue-data
+        target: /data
+        volume: {}
+  scheduler:
+    command:
+      - bench
+      - schedule
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+        required: true
+    image: digikwal/press:latest
+    labels:
+      ofelia.enabled: "true"
+      ofelia.job-exec.datecron.command: bench --site all backup
+      ofelia.job-exec.datecron.schedule: '@every 6h'
+      ofelia.job-exec.datecron.user: frappe
+    networks:
+      default: null
+    platform: linux/amd64
+    pull_policy: missing
+    restart: unless-stopped
+    volumes:
+      - sites:/home/frappe/frappe-bench/sites
+      - logs:/home/frappe/frappe-bench/logs
+      - certbot-press:/home/frappe/.certbot
+      - clones-press:/home/frappe/frappe-bench/.clones
+      - builds-press:/home/frappe/frappe-bench/.docker-builds
+  websocket:
     command:
       - node
       - /home/frappe/frappe-bench/apps/frappe/socketio.js
+    depends_on:
+      configurator:
+        condition: service_completed_successfully
+        required: true
+    image: digikwal/press:latest
+    networks:
+      default: null
+    platform: linux/amd64
+    pull_policy: missing
+    restart: unless-stopped
     volumes:
       - sites:/home/frappe/frappe-bench/sites
-
-  queue-short:
-    <<: *backend_defaults
-    platform: linux/amd64
-    command: bench worker --queue short,default
-
-  queue-long:
-    <<: *backend_defaults
-    platform: linux/amd64
-    command: bench worker --queue long,default,short
-
-  scheduler:
-    <<: *backend_defaults
-    platform: linux/amd64
-    command: bench schedule
-
-# ERPNext requires local assets access (Frappe does not)
+      - logs:/home/frappe/frappe-bench/logs
+      - certbot-press:/home/frappe/.certbot
+      - clones-press:/home/frappe/frappe-bench/.clones
+      - builds-press:/home/frappe/frappe-bench/.docker-builds
+networks:
+  default:
 volumes:
+  traefik-data:
+  db-data:
+  redis-queue-data:
   sites:
+  logs:
+  certbot-press:
+  clones-press:
+  builds-press:
+x-backend-defaults:
+  depends_on:
+    configurator:
+      condition: service_completed_successfully
+  image: digikwal/press:latest
+  pull_policy: missing
+  restart: unless-stopped
+  volumes:
+    - sites:/home/frappe/frappe-bench/sites
+x-customizable-image:
+  image: digikwal/press:latest
+  pull_policy: missing
+  restart: unless-stopped
+x-depends-on-configurator:
+  depends_on:
+    configurator:
+      condition: service_completed_successfully
