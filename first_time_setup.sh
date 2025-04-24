@@ -57,8 +57,11 @@ fi
 # Start Docker Compose
 echo "Starting Docker Compose"
 countdown 3
-cd /home/frappe/press && docker compose up -d
-if ! docker compose up -d; then # SC2181: Use direct exit code check
+cd /home/frappe/press || {
+  echo "Failed to change directory to /home/frappe/press"
+  exit 1
+}
+if ! docker compose up -d; then
   echo "Docker Compose failed to start"
   exit 1
 fi
@@ -71,11 +74,10 @@ export "$(grep -v "^#" /home/frappe/press/.env | xargs)" # SC2046: Quote command
 # Create new Frappe site
 echo "Creating Frappe site"
 countdown 3
-cd /home/frappe/press && docker compose exec backend bench new-site "$FRAPPE_PRESS_DOMAIN" \
-  --mariadb-user-host-login-scope=% \
-  --db-root-username="root" \
-  --admin-password="$FRAPPE_ADMIN_PASSWORD" \
-  --db-root-password="$MYSQL_ROOT_PASSWORD"
+cd /home/frappe/press || {
+  echo "Failed to change directory to /home/frappe/press"
+  exit 1
+}
 if ! docker compose exec backend bench new-site "$FRAPPE_PRESS_DOMAIN" \
   --mariadb-user-host-login-scope=% \
   --db-root-username="root" \
@@ -88,7 +90,10 @@ fi
 # Install Press app
 echo "Installing Press app"
 countdown 3
-cd /home/frappe/press && docker compose exec backend bench --site "$FRAPPE_PRESS_DOMAIN" install-app press
+cd /home/frappe/press || {
+  echo "Failed to change directory to /home/frappe/press"
+  exit 1
+}
 if ! docker compose exec backend bench --site "$FRAPPE_PRESS_DOMAIN" install-app press; then
   echo "Failed to install Press app"
   exit 1
