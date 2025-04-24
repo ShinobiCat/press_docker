@@ -39,8 +39,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          npx semantic-release
-          RELEASE_TAG=$(npx semantic-release | grep -oP '(?<=next release version is )[^ ]+')
+          RELEASE_TAG=$(npx semantic-release | tee /dev/stderr | grep -oP '(?<=next release version is )[^ ]+')
           echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
 
       - name: Create release metadata files
