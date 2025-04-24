@@ -70,21 +70,20 @@ fi
 echo "Waiting for services to initialize"
 countdown 10
 
-# Export environment variables from .env file
-if [ -f /home/frappe/press/.env ]; then
-  echo "Exporting environment variables from .env"
-  while IFS='=' read -r key value; do
-    # Trim leading/trailing whitespace
-    key=$(echo "$key" | xargs)
-    value=$(echo "$value" | xargs)
+# Function to get a variable value from the .env file
+get_env_var() {
+  local var_name=$1
+  grep -E "^${var_name}=" /home/frappe/press/.env | cut -d '=' -f2- | xargs
+}
+# Read required variables from .env
+FRAPPE_PRESS_DOMAIN=$(get_env_var "FRAPPE_PRESS_DOMAIN")
+FRAPPE_ADMIN_PASSWORD=$(get_env_var "FRAPPE_ADMIN_PASSWORD")
+MYSQL_ROOT_PASSWORD=$(get_env_var "MYSQL_ROOT_PASSWORD")
+FRAPPE_ADMIN_EMAIL=$(get_env_var "FRAPPE_ADMIN_EMAIL")
 
-    # Skip lines starting with #, empty lines, or invalid keys
-    if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ && -n "$value" ]]; then
-      export "$key"="$value"
-    fi
-  done < <(grep -v '^#' /home/frappe/press/.env) # Exclude comment lines
-else
-  echo ".env file not found"
+# Validate that required variables are set
+if [ -z "$FRAPPE_PRESS_DOMAIN" ] || [ -z "$FRAPPE_ADMIN_PASSWORD" ] || [ -z "$MYSQL_ROOT_PASSWORD" ] || [ -z "$FRAPPE_ADMIN_EMAIL" ]; then
+  echo "One or more required variables are missing in the .env file"
   exit 1
 fi
 
