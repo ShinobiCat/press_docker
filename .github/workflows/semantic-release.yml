@@ -24,7 +24,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
 
       - name: Install dependencies
         run: npm install
@@ -39,6 +39,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Configure Git to use the GITHUB_TOKEN for authentication
+          git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git
+
+          # Run semantic-release and capture the next release version
           npx semantic-release
           RELEASE_TAG=$(npx semantic-release --dry-run | grep -oP '(?<=next release version is )[^ ]+')
           echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
