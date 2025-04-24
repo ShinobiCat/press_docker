@@ -72,6 +72,7 @@ countdown 10
 
 # Function to get a variable value from the .env file
 get_env_var() {
+  dos2unix /home/frappe/press/.env 2>/dev/null
   local var_name=$1
   grep -E "^${var_name}=" /home/frappe/press/.env | cut -d '=' -f2- | tr -d '\r' | xargs
 }
