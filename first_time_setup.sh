@@ -69,7 +69,24 @@ fi
 # Wait for services to initialize
 echo "Waiting for services to initialize"
 countdown 10
-export "$(grep -v "^#" /home/frappe/press/.env | xargs)"
+
+# Export environment variables from .env file
+if [ -f /home/frappe/press/.env ]; then
+  echo "Exporting environment variables from .env"
+  while IFS='=' read -r key value; do
+    # Trim leading/trailing whitespace
+    key=$(echo "$key" | xargs)
+    value=$(echo "$value" | xargs)
+
+    # Skip lines starting with #, empty lines, or invalid keys
+    if [[ "$key" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ && -n "$value" ]]; then
+      export "$key"="$value"
+    fi
+  done < <(grep -v '^#' /home/frappe/press/.env) # Exclude comment lines
+else
+  echo ".env file not found"
+  exit 1
+fi
 
 # Create new Frappe site
 echo "Creating Frappe site"
