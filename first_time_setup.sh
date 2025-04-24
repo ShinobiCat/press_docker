@@ -118,9 +118,32 @@ fi
 # Complete setup wizard
 echo "Completing setup wizard"
 countdown 3
+
+# Safely construct the JSON string
+SETUP_WIZARD_JSON=$(jq -n \
+  --arg email "$FRAPPE_ADMIN_EMAIL" \
+  --arg password "$FRAPPE_ADMIN_PASSWORD" \
+  --arg full_name "Administrator" \
+  --arg language "english" \
+  --arg country "Netherlands" \
+  --arg timezone "Europe/Amsterdam" \
+  --arg currency "EUR" \
+  '{
+    args: {
+      email: $email,
+      password: $password,
+      full_name: $full_name,
+      language: $language,
+      country: $country,
+      timezone: $timezone,
+      currency: $currency
+    }
+  }')
+
+# Execute the setup wizard
 cd /home/frappe/press && docker compose exec backend bench --site "$FRAPPE_PRESS_DOMAIN" execute \
   frappe.desk.page.setup_wizard.setup_wizard.setup_complete \
-  --kwargs "{\"args\": {\"email\": \"$FRAPPE_ADMIN_EMAIL\", \"password\": \"$FRAPPE_ADMIN_PASSWORD\", \"full_name\": \"Administrator\", \"language\": \"english\", \"country\": \"Netherlands\", \"timezone\": \"Europe/Amsterdam\", \"currency\": \"EUR\"}}"
+  --kwargs "$SETUP_WIZARD_JSON"
 
 # Restart Docker Compose services
 docker compose restart
