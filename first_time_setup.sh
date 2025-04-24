@@ -73,7 +73,7 @@ countdown 10
 # Function to get a variable value from the .env file
 get_env_var() {
   local var_name=$1
-  grep -E "^${var_name}=" /home/frappe/press/.env | cut -d '=' -f2- | xargs
+  grep -E "^${var_name}=" /home/frappe/press/.env | cut -d '=' -f2- | tr -d '\r' | xargs
 }
 # Read required variables from .env
 FRAPPE_PRESS_DOMAIN=$(get_env_var "FRAPPE_PRESS_DOMAIN")
