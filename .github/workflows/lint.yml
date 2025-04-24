@@ -4,9 +4,15 @@ on:
   push:
     branches:
       - main
+    paths:
+      - "images/**"
+      - ".github/workflows/docker-build.yml"
   pull_request:
     branches:
       - main
+    paths:
+      - "images/**"
+      - ".github/workflows/docker-build.yml"
 
 jobs:
   lint:
