@@ -1,6 +1,5 @@
 {
   "name": "press",
-  "version": "1.0.0",
   "description": "Semantic release setup for the press project.",
   "repository": {
     "type": "git",
