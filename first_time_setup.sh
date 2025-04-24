@@ -69,7 +69,7 @@ fi
 # Wait for services to initialize
 echo "Waiting for services to initialize"
 countdown 10
-export "$(grep -v "^#" /home/frappe/press/.env | xargs)" # SC2046: Quote command substitution
+export "$(grep -v "^#" /home/frappe/press/.env | xargs)"
 
 # Create new Frappe site
 echo "Creating Frappe site"
