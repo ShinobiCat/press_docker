@@ -54,6 +54,18 @@ else
   echo "FRAPPE_ADMIN_PASSWORD=$FRAPPE_ADMIN_PASSWORD" >>/home/frappe/press/.env
 fi
 
+# Generate or confirm Docker registry password
+echo "Checking if Docker registry password is set in .env"
+countdown 3
+if grep -q "DOCKER_REGISTRY_PASSWORD" /home/frappe/press/.env; then
+  echo "DOCKER_REGISTRY_PASSWORD already set in .env"
+else
+  echo "DOCKER_REGISTRY_PASSWORD not set in .env"
+  echo "Generating password for Docker registry"
+  DOCKER_REGISTRY_PASSWORD=$(openssl rand -base64 128 | tr -d '=+/[:space:]' | head -c 55)
+  echo "DOCKER_REGISTRY_PASSWORD=$DOCKER_REGISTRY_PASSWORD" >>/home/frappe/press/.env
+fi
+
 # Start Docker Compose
 echo "Starting Docker Compose"
 countdown 3
@@ -68,7 +80,7 @@ fi
 
 # Wait for services to initialize
 echo "Waiting for services to initialize"
-countdown 10
+countdown 5
 
 # Function to get a variable value from the .env file
 get_env_var() {
@@ -80,10 +92,10 @@ get_env_var() {
 FRAPPE_PRESS_DOMAIN=$(get_env_var "FRAPPE_PRESS_DOMAIN")
 FRAPPE_ADMIN_PASSWORD=$(get_env_var "FRAPPE_ADMIN_PASSWORD")
 MYSQL_ROOT_PASSWORD=$(get_env_var "MYSQL_ROOT_PASSWORD")
-FRAPPE_ADMIN_EMAIL=$(get_env_var "FRAPPE_ADMIN_EMAIL")
+ADMIN_EMAIL=$(get_env_var "ADMIN_EMAIL")
 
 # Validate that required variables are set
-if [ -z "$FRAPPE_PRESS_DOMAIN" ] || [ -z "$FRAPPE_ADMIN_PASSWORD" ] || [ -z "$MYSQL_ROOT_PASSWORD" ] || [ -z "$FRAPPE_ADMIN_EMAIL" ]; then
+if [ -z "$FRAPPE_PRESS_DOMAIN" ] || [ -z "$FRAPPE_ADMIN_PASSWORD" ] || [ -z "$MYSQL_ROOT_PASSWORD" ] || [ -z "$ADMIN_EMAIL" ]; then
   echo "One or more required variables are missing in the .env file"
   exit 1
 fi
@@ -122,7 +134,7 @@ countdown 3
 
 # Safely construct the JSON string
 SETUP_WIZARD_JSON=$(jq -n \
-  --arg email "$FRAPPE_ADMIN_EMAIL" \
+  --arg email "$ADMIN_EMAIL" \
   --arg password "$FRAPPE_ADMIN_PASSWORD" \
   --arg full_name "Administrator" \
   --arg language "english" \
