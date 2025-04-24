@@ -20,11 +20,15 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: release-metadata
+          path: ./artifacts/release-metadata
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          repository: digikwal/press
+          run-id: ${{ github.event.workflow_run.id }}
 
       - name: Load release metadata
         run: |
-          export RELEASE_TAG=$(cat release_tag.txt)
-          export FRAPPE_BRANCH=$(cat frappe_branch.txt)
+          export RELEASE_TAG=$(cat ./artifacts/release-metadata/release_tag.txt)
+          export FRAPPE_BRANCH=$(cat ./artifacts/release-metadata/frappe_branch.txt)
           echo "RELEASE_TAG=$RELEASE_TAG" >> $GITHUB_ENV
           echo "FRAPPE_BRANCH=$FRAPPE_BRANCH" >> $GITHUB_ENV
 
