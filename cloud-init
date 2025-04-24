@@ -9,6 +9,7 @@ users:
 
 packages:
   - curl
+  - dos2unix
   - git
   - jq
   - software-properties-common
