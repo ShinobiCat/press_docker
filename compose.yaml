@@ -306,7 +306,7 @@ services:
       traefik.http.routers.registry.rule: Host(`${DOCKER_REGISTRY_DOMAIN}`)
       traefik.http.routers.registry.tls.certresolver: main-resolver
       traefik.http.routers.registry.middlewares: registry-auth
-      traefik.http.middlewares.registry-auth.basicauth.users: administrator:${DOCKER_REGISTRY_PASSWORD}
+      traefik.http.middlewares.registry-auth.basicauth.users: ${ADMIN_EMAIL}:${DOCKER_REGISTRY_PASSWORD}
       traefik.http.services.registry.loadbalancer.server.port: 5000
     volumes:
       - registry-data:/var/lib/registry
