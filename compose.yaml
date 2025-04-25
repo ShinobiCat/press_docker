@@ -19,6 +19,7 @@ services:
       - certbot-press:/home/frappe/.certbot
       - clones-press:/home/frappe/frappe-bench/.clones
       - builds-press:/home/frappe/frappe-bench/.docker-builds
+      - /home/frappe/.ssh:/home/frappe/.ssh:ro
   configurator:
     command:
       - |
@@ -63,6 +64,7 @@ services:
       - certbot-press:/home/frappe/.certbot
       - clones-press:/home/frappe/frappe-bench/.clones
       - builds-press:/home/frappe/frappe-bench/.docker-builds
+      - /home/frappe/.ssh:/home/frappe/.ssh:ro
   cron:
     command:
       - daemon
@@ -142,6 +144,7 @@ services:
       - certbot-press:/home/frappe/.certbot
       - clones-press:/home/frappe/frappe-bench/.clones
       - builds-press:/home/frappe/frappe-bench/.docker-builds
+      - /home/frappe/.ssh:/home/frappe/.ssh:ro
   proxy:
     command:
       - --providers.docker=true
@@ -210,6 +213,7 @@ services:
       - certbot-press:/home/frappe/.certbot
       - clones-press:/home/frappe/frappe-bench/.clones
       - builds-press:/home/frappe/frappe-bench/.docker-builds
+      - /home/frappe/.ssh:/home/frappe/.ssh:ro
   queue-short:
     command:
       - bench
@@ -234,6 +238,7 @@ services:
       - certbot-press:/home/frappe/.certbot
       - clones-press:/home/frappe/frappe-bench/.clones
       - builds-press:/home/frappe/frappe-bench/.docker-builds
+      - /home/frappe/.ssh:/home/frappe/.ssh:ro
   redis-cache:
     image: redis:6.2-alpine
     networks:
@@ -275,6 +280,7 @@ services:
       - certbot-press:/home/frappe/.certbot
       - clones-press:/home/frappe/frappe-bench/.clones
       - builds-press:/home/frappe/frappe-bench/.docker-builds
+      - /home/frappe/.ssh:/home/frappe/.ssh:ro
   websocket:
     command:
       - node
@@ -297,6 +303,7 @@ services:
       - certbot-press:/home/frappe/.certbot
       - clones-press:/home/frappe/frappe-bench/.clones
       - builds-press:/home/frappe/frappe-bench/.docker-builds
+      - /home/frappe/.ssh:/home/frappe/.ssh:ro
   registry:
     image: registry:2
     restart: unless-stopped
