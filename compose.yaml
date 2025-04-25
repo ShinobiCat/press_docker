@@ -5,7 +5,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: digikwal/press:1.1.1
+    image: digikwal/press:1.1.2
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     networks:
@@ -50,7 +50,7 @@ services:
       REDIS_CACHE: redis-cache:6379
       REDIS_QUEUE: redis-queue:6379
       SOCKETIO_PORT: "9000"
-    image: digikwal/press:1.1.1
+    image: digikwal/press:1.1.2
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     networks:
@@ -125,7 +125,7 @@ services:
       UPSTREAM_REAL_IP_ADDRESS: 127.0.0.1
       UPSTREAM_REAL_IP_HEADER: X-Forwarded-For
       UPSTREAM_REAL_IP_RECURSIVE: "off"
-    image: digikwal/press:1.1.1
+    image: digikwal/press:1.1.2
     labels:
       com.centurylinklabs.watchtower.enable: "true"
       traefik.enable: "true"
@@ -199,7 +199,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: digikwal/press:1.1.1
+    image: digikwal/press:1.1.2
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     networks:
@@ -224,7 +224,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: digikwal/press:1.1.1
+    image: digikwal/press:1.1.2
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     networks:
@@ -262,7 +262,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: digikwal/press:1.1.1
+    image: digikwal/press:1.1.2
     labels:
       com.centurylinklabs.watchtower.enable: "true"
       ofelia.enabled: "true"
@@ -289,7 +289,7 @@ services:
       configurator:
         condition: service_completed_successfully
         required: true
-    image: digikwal/press:1.1.1
+    image: digikwal/press:1.1.2
     labels:
       com.centurylinklabs.watchtower.enable: "true"
     networks:
@@ -343,13 +343,13 @@ x-backend-defaults:
   depends_on:
     configurator:
       condition: service_completed_successfully
-  image: digikwal/press:1.1.1
+  image: digikwal/press:1.1.2
   pull_policy: missing
   restart: unless-stopped
   volumes:
     - sites:/home/frappe/frappe-bench/sites
 x-customizable-image:
-  image: digikwal/press:1.1.1
+  image: digikwal/press:1.1.2
   pull_policy: missing
   restart: unless-stopped
 x-depends-on-configurator:
